@@ -1,9 +1,10 @@
 # Dense Captioning Events in Video - Evaluation Code
+This is a forked repo from the official [densevid_eval](https://github.com/ranjaykrishna/densevid_eval). It further supports language evaluation on coco-caption [SPICE](https://github.com/tylin/coco-caption).
 
 ## Usage
 First, clone this repository and make sure that all the submodules are also cloned properly.
 ```
-git clone --recursive https://github.com/ranjaykrishna/densevid_eval.git
+git clone --recursive https://github.com/LuoweiZhou/densevid_eval_spice.git
 ```
 
 Next, download the dataset using
@@ -22,7 +23,7 @@ python evaluate.py -s YOUR_SUBMISSION_FILE.JSON
 ```
 
 ## Paper
-Visit [our project page](http://cs.stanford.edu/people/ranjaykrishna/densevid) and read our paper for details.
+Visit [here](http://cs.stanford.edu/people/ranjaykrishna/densevid) for details.
 
 ## Citation
 ```
@@ -37,10 +38,3 @@ Visit [our project page](http://cs.stanford.edu/people/ranjaykrishna/densevid) a
 ## License
 
 MIT License copyright Ranjay Krishna
-
-## Contributions
-Feel free to send pull requests to help write example code, contribute patches, document methods, etc. You can reach me through:
-
-twitter: @RanjayKrishna
-
-email: ranjaykrishna [at] stanford [dot] edu
