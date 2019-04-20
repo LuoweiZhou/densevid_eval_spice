@@ -15,6 +15,7 @@ from pycocoevalcap.bleu.bleu import Bleu
 from pycocoevalcap.meteor.meteor import Meteor
 from pycocoevalcap.rouge.rouge import Rouge
 from pycocoevalcap.cider.cider import Cider
+from pycocoevalcap.spice.spice import Spice
 from sets import Set
 import numpy as np
 
@@ -50,10 +51,11 @@ class ANETcaptions(object):
                 (Bleu(4), ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4"]),
                 (Meteor(),"METEOR"),
                 (Rouge(), "ROUGE_L"),
-                (Cider(), "CIDEr")
+                (Cider('corpus'), "CIDEr"),
+                (Spice(), "SPICE")
             ]
         else:
-            self.scorers = [(Meteor(), "METEOR")]
+            self.scorers = [(Cider('corpus'), "CIDEr")]
 
     def import_prediction(self, prediction_filename):
         if self.verbose:
@@ -201,6 +203,10 @@ class ANETcaptions(object):
 
         # Each scorer will compute across all videos and take average score
         output = {}
+        # call tokenizer here for all predictions and gts
+        tokenize_res = self.tokenizer.tokenize(cur_res)
+        tokenize_gts = self.tokenizer.tokenize(cur_gts)
+
         for scorer, method in self.scorers:
             if self.verbose:
                 print 'computing %s score...'%(scorer.method())
@@ -208,35 +214,40 @@ class ANETcaptions(object):
             # For each video, take all the valid pairs (based from tIoU) and compute the score
             all_scores = {}
             
-            # call tokenizer here for all predictions and gts
-            tokenize_res = self.tokenizer.tokenize(cur_res)
-            tokenize_gts = self.tokenizer.tokenize(cur_gts)
-            
-            # reshape back
-            for vid in vid2capid.keys():
-                res[vid] = {index:tokenize_res[index] for index in vid2capid[vid]}
-                gts[vid] = {index:tokenize_gts[index] for index in vid2capid[vid]}
-            
-            for vid_id in gt_vid_ids:
+            if method != 'SPICE':
+                for vid in vid2capid.keys():
+                    res[vid] = {index:tokenize_res[index] for index in vid2capid[vid]}
+                    gts[vid] = {index:tokenize_gts[index] for index in vid2capid[vid]}
 
-                if len(res[vid_id]) == 0 or len(gts[vid_id]) == 0:
-                    if type(method) == list:
-                        score = [0] * len(method)
+                for vid_id in gt_vid_ids:
+
+                    if len(res[vid_id]) == 0 or len(gts[vid_id]) == 0:
+                        if type(method) == list:
+                            score = [0] * len(method)
+                        else:
+                            score = 0
                     else:
-                        score = 0
-                else:
-                    score, scores = scorer.compute_score(gts[vid_id], res[vid_id])
-                all_scores[vid_id] = score
-
-            print all_scores.values()
-            if type(method) == list:
+                        score, scores = scorer.compute_score(gts[vid_id], res[vid_id])
+                    all_scores[vid_id] = score
                 scores = np.mean(all_scores.values(), axis=0)
+            else:
+                if len(tokenize_res) == 0 or len(tokenize_gts) == 0:
+                        scores = 0
+                else:
+                    ids = {v:i for i,v in enumerate(sorted(tokenize_gts.keys()))}
+                    _, scores_all_sents = scorer.compute_score(tokenize_gts, tokenize_res)
+                    for vid_id in gt_vid_ids:
+                        score = [scores_all_sents[ids[index]]['All']['f'] for index in vid2capid[vid_id]]
+                        all_scores[vid_id] = np.mean(score) if score else 0
+                    scores = np.mean(all_scores.values(), axis=0)
+
+            if type(method) == list:
                 for m in xrange(len(method)):
                     output[method[m]] = scores[m]
                     if self.verbose:
                         print "Calculated tIoU: %1.1f, %s: %0.3f" % (tiou, method[m], output[method[m]])
             else:
-                output[method] = np.mean(all_scores.values())
+                output[method] = np.mean(scores)
                 if self.verbose:
                     print "Calculated tIoU: %1.1f, %s: %0.3f" % (tiou, method, output[method])
         return output
