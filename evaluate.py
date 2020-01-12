@@ -7,6 +7,8 @@
 
 import argparse
 import json
+import random
+import string
 import sys
 sys.path.insert(0, './coco-caption') # Hack to allow the import of pycocoeval
 
@@ -18,6 +20,10 @@ from pycocoevalcap.cider.cider import Cider
 from pycocoevalcap.spice.spice import Spice
 from sets import Set
 import numpy as np
+
+def random_string(string_length):
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for i in xrange(string_length))
 
 def remove_nonascii(text):
     return ''.join([i if ord(i) < 128 else ' ' for i in text])
@@ -169,15 +175,15 @@ class ANETcaptions(object):
             
             vid2capid[vid_id] = []
 
-            # If the video does not have a prediction, then Vwe give it no matches
-            # We set it to empty, and use this as a sanity check later on
+            # If the video does not have a prediction, then we give it no matches
+            # We set it to empty, and use this as a sanity check later on.
             if vid_id not in self.prediction:
                 pass
 
             # If we do have a prediction, then we find the scores based on all the
-            # valid tIoU overlaps
+            # valid tIoU overlaps.
             else:
-                # For each prediction, we look at the tIoU with ground truth
+                # For each prediction, we look at the tIoU with ground truth.
                 for pred in self.prediction[vid_id]:
                     has_added = False
                     for gt in self.ground_truths:
@@ -186,7 +192,6 @@ class ANETcaptions(object):
                         gt_captions = gt[vid_id]
                         for caption_idx, caption_timestamp in enumerate(gt_captions['timestamps']):
                             if self.iou(pred['timestamp'], caption_timestamp) >= tiou:
-
                                 cur_res[unique_index] = [{'caption': remove_nonascii(pred['sentence'])}]
                                 cur_gts[unique_index] = [{'caption': remove_nonascii(gt_captions['sentences'][caption_idx])}]
                                 vid2capid[vid_id].append(unique_index)
@@ -194,10 +199,10 @@ class ANETcaptions(object):
                                 has_added = True
 
                     # If the predicted caption does not overlap with any ground truth,
-                    # we should compare it with garbage
+                    # we should compare it with garbage.
                     if not has_added:
                         cur_res[unique_index] = [{'caption': remove_nonascii(pred['sentence'])}]
-                        cur_gts[unique_index] = [{'caption': 'abc123!@#'}]
+                        cur_gts[unique_index] = [{'caption': random_string(random.randint(10, 20))}]
                         vid2capid[vid_id].append(unique_index)
                         unique_index += 1
 
